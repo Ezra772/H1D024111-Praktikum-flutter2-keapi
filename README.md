@@ -4,6 +4,7 @@
 # Shift Baru: G
 
 ## Ghift
+<img width="400" height="534" alt="Screen Recording 2026-11-15 210700" src="https://github.com/user-attachments/assets/eb23b221-56a0-43ac-9871-9a5161682bd1" />
 
 
 ## screnshot
