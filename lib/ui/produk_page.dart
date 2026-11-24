@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:tokokita/bloc/logout_bloc.dart';
 import 'package:tokokita/bloc/produk_bloc.dart';
-import 'package:tokokita/helper/api_exception.dart';
-import 'package:tokokita/helper/user_info.dart';
 import 'package:tokokita/model/produk.dart';
 import 'package:tokokita/ui/login_page.dart';
 import 'package:tokokita/ui/produk_detail.dart';
@@ -15,138 +14,93 @@ class ProdukPage extends StatefulWidget {
 }
 
 class _ProdukPageState extends State<ProdukPage> {
-  bool _isLoading = false;
-  String _message = "";
-  List<Produk> _listProduk = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _getData();
-  }
-
-  Future _getData() async {
-    setState(() {
-      _isLoading = true;
-      _message = "";
-    });
-    try {
-      final produks = await ProdukBloc.getProduks();
-      setState(() {
-        _listProduk = produks;
-        _message = "Tidak ada data produk";
-      });
-    } on ApiException catch (e) {
-      setState(() {
-        _message = e.message;
-      });
-    } catch (_) {
-      setState(() {
-        _message = "Gagal memuat produk, cek koneksi ke server";
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('List Produk'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 20.0),
             child: GestureDetector(
               child: const Icon(Icons.add, size: 26.0),
               onTap: () async {
-                await Navigator.push(
+                Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ProdukForm()),
+                  MaterialPageRoute(builder: (context) => const ProdukForm()),
                 );
-                _getData();
               },
             ),
-          )
+          ),
         ],
       ),
       drawer: Drawer(
-        backgroundColor: Colors.white,
         child: ListView(
           children: [
             ListTile(
               title: const Text('Logout'),
               trailing: const Icon(Icons.logout),
               onTap: () async {
-                await UserInfo().logout();
+                await LogoutBloc.logout();
                 if (!context.mounted) return;
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const LoginPage(),
+                  ),
                 );
               },
-            )
+            ),
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.blue),
-            )
-          : _listProduk.isEmpty
-              ? Center(
-                  child: Text(_message),
-                )
-              : RefreshIndicator(
-                  color: Colors.blue,
-                  onRefresh: _getData,
-                  child: ListView.builder(
-                    itemCount: _listProduk.length,
-                    itemBuilder: (context, index) {
-                      final produk = _listProduk[index];
-                      return ItemProduk(
-                        produk: produk,
-                        onRefresh: _getData,
-                      );
-                    },
-                  ),
-                ),
+      body: FutureBuilder<List>(
+        future: ProdukBloc.getProduks(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) debugPrint(snapshot.error.toString());
+          return snapshot.hasData
+              ? ListProduk(list: snapshot.data)
+              : const Center(child: CircularProgressIndicator());
+        },
+      ),
+    );
+  }
+}
+
+class ListProduk extends StatelessWidget {
+  final List? list;
+
+  const ListProduk({super.key, this.list});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: list == null ? 0 : list!.length,
+      itemBuilder: (context, i) {
+        return ItemProduk(produk: list![i]);
+      },
     );
   }
 }
 
 class ItemProduk extends StatelessWidget {
   final Produk produk;
-  final VoidCallback onRefresh;
 
-  const ItemProduk({super.key, required this.produk, required this.onRefresh});
+  const ItemProduk({super.key, required this.produk});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () async {
-        await Navigator.push(
+      onTap: () {
+        Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => ProdukDetail(produk: produk),
-          ),
+          MaterialPageRoute(builder: (context) => ProdukDetail(produk: produk)),
         );
-        onRefresh();
       },
       child: Card(
-        color: Colors.white,
-        elevation: 2,
         child: ListTile(
-          title: Text(
-            produk.namaProduk ?? '',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(produk.hargaProduk?.toString() ?? ''),
+          title: Text(produk.namaProduk!),
+          subtitle: Text(produk.hargaProduk.toString()),
         ),
       ),
     );

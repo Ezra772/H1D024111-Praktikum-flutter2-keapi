@@ -1,109 +1,55 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-import 'package:tokokita/helper/api_exception.dart';
-import 'package:tokokita/helper/api_url.dart';
-import 'package:tokokita/helper/user_info.dart';
+import 'package:tokokita/helpers/api.dart';
+import 'package:tokokita/helpers/api_url.dart';
 import 'package:tokokita/model/produk.dart';
 
 class ProdukBloc {
-  // Helper: buat header dengan token Authorization
-  static Future<Map<String, String>> _getHeaders() async {
-    final token = await UserInfo().getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-    };
-  }
-
   static Future<List<Produk>> getProduks() async {
-    final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse(ApiUrl.listProduk),
-      headers: headers,
-    );
-
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    if (response.statusCode != 200 || data['status'] != true) {
-      throw ApiException(data['data'].toString());
+    String apiUrl = ApiUrl.listProduk;
+    var response = await Api().get(apiUrl);
+    var jsonObj = json.decode(response.body);
+    List<dynamic> listProduk = (jsonObj as Map<String, dynamic>)['data'];
+    List<Produk> produks = [];
+    for (int i = 0; i < listProduk.length; i++) {
+      produks.add(Produk.fromJson(listProduk[i]));
     }
-    final List list = data['data'] as List;
-    return list.map((item) => Produk.fromJson(item)).toList();
+    return produks;
   }
 
-  static Future<Produk> detailProduk({required int id}) async {
-    final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse(ApiUrl.detailProduk(id)),
-      headers: headers,
-    );
+  static Future addProduk({Produk? produk}) async {
+    String apiUrl = ApiUrl.createProduk;
 
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    if (response.statusCode != 200 || data['status'] != true) {
-      throw ApiException(data['data'].toString());
-    }
-    return Produk.fromJson(data['data']);
+    var body = {
+      "kode_produk": produk!.kodeProduk,
+      "nama_produk": produk.namaProduk,
+      "harga": produk.hargaProduk.toString(),
+    };
+
+    var response = await Api().post(apiUrl, body);
+    var jsonObj = json.decode(response.body);
+    return jsonObj['status'];
   }
 
-  static Future<Produk> createProduk({
-    required String kodeProduk,
-    required String namaProduk,
-    required int hargaProduk,
-  }) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse(ApiUrl.listProduk),
-      headers: headers,
-      body: jsonEncode({
-        'kode_produk': kodeProduk,
-        'nama_produk': namaProduk,
-        'harga': hargaProduk,
-      }),
-    );
+  static Future<bool> updateProduk({required Produk produk}) async {
+    String apiUrl = ApiUrl.updateProduk(produk.id!);
 
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    if (response.statusCode != 200 || data['status'] != true) {
-      throw ApiException(data['data'].toString());
-    }
-    return Produk.fromJson(data['data']);
+    var body = {
+      "kode_produk": produk.kodeProduk,
+      "nama_produk": produk.namaProduk,
+      "harga": produk.hargaProduk.toString(),
+    };
+
+    var response = await Api().post(apiUrl, body);
+    var jsonObj = json.decode(response.body);
+    return jsonObj['data'];
   }
 
-  static Future<bool> updateProduk({
-    required int id,
-    required String kodeProduk,
-    required String namaProduk,
-    required int hargaProduk,
-  }) async {
-    final headers = await _getHeaders();
-    // Gunakan POST ke /produk/{id}/update (lebih kompatibel dari PUT di berbagai server)
-    final response = await http.post(
-      Uri.parse(ApiUrl.updateProduk(id)),
-      headers: headers,
-      body: jsonEncode({
-        'kode_produk': kodeProduk,
-        'nama_produk': namaProduk,
-        'harga': hargaProduk,
-      }),
-    );
+  static Future<bool> deleteProduk({int? id}) async {
+    String apiUrl = ApiUrl.deleteProduk(id!);
 
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    if (response.statusCode != 200 || data['status'] != true) {
-      throw ApiException(data['data'].toString());
-    }
-    return true;
-  }
-
-  static Future<bool> deleteProduk({required int id}) async {
-    final headers = await _getHeaders();
-    final response = await http.delete(
-      Uri.parse(ApiUrl.deleteProduk(id)),
-      headers: headers,
-    );
-
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    if (response.statusCode != 200 || data['status'] != true) {
-      throw ApiException(data['data'].toString());
-    }
-    return true;
+    var response = await Api().delete(apiUrl);
+    var jsonObj = json.decode(response.body);
+    return (jsonObj as Map<String, dynamic>)['data'];
   }
 }
